@@ -29,7 +29,10 @@ class DirectoryListerCore
 		if(!preg_match('/\/$/', $this->options['url'])) {
 			$this->options['url'] .= '/';
 		}
+	}
 
+	public function run()
+	{
 		$this->wordlistStream->on('data', function($word) {
 			$this->emitRequest($word);
 		});
@@ -78,7 +81,7 @@ class DirectoryListerCore
 
 		// Add error handler (put word again into queue)
 		$request->on('error', function($error) use ($word) {
-			$this->progressStream->write("ERROR: $word, $error\n");
+			//$this->progressStream->write("ERROR: $word, $error\n");
 			$this->queuedRequests[] = $word;
 		});
 

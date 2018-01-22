@@ -7,7 +7,7 @@ $loop = React\EventLoop\Factory::create();
 
 // Manual config that is not configurable yet via argv
 $method = 'HEAD';
-$max_concurrent_requests = 50;
+$max_concurrent_requests = 10;
 $dns_server = '8.8.8.8';
 $request_timeout = 10;
 
@@ -39,7 +39,7 @@ if(!isset($options['headers']['Host'])) {
 
 // Apply auth
 if($options['auth'] !== false && !isset($options['headers']['Authorization'])) {
-	$options['headers']['Authorization'] = base64_encode($options['auth']);
+	$options['headers']['Authorization'] = 'Basic ' . base64_encode($options['auth']);
 }
 
 // Apply cookie
@@ -51,6 +51,8 @@ if($options['cookie'] !== false && !isset($options['headers']['Cookie'])) {
 if($options['user_agent'] !== false && !isset($options['headers']['User-Agent'])) {
 	$options['headers']['User-Agent'] = $options['user_agent'];
 }
+
+$options['headers']['Connection'] = 'close';
 
 // Add not configurable options
 $options['method'] = $method;
@@ -105,5 +107,6 @@ $parameters = array(
 
 // Run
 $directoryLister = new DjThd\DirectoryListerCore($parameters, $options);
+$directoryLister->run();
 
 $loop->run();
