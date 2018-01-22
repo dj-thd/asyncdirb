@@ -33,13 +33,13 @@ class ResponseHandler
 				}
 				break;
 			case '302':
-				//$headers = $this->response->getHeaders();
-				//$headers = array_change_key_case($headers, CASE_LOWER);
-				//if(isset($headers['location'])) {
-				//	$output->write("302: " . $this->requestData . " - " . $headers['location'] . "\n");
-				//} else {
-				//	$output->write("302: " . $this->requestData . " - " . "NO LOCATION\n");
-				//}
+				$headers = $this->response->getHeaders();
+				$headers = array_change_key_case($headers, CASE_LOWER);
+				if(isset($headers['location'])) {
+					$output->write("302: " . $this->requestData . " - " . $headers['location'] . "\n");
+				} else {
+					$output->write("302: " . $this->requestData . " - " . "NO LOCATION\n");
+				}
 				break;
 			case '200':
 				$progress->write(str_repeat(" ", 120) . "\r");
