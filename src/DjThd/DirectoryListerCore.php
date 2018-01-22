@@ -11,8 +11,7 @@ class DirectoryListerCore
 	protected $progressStream = null;
 	protected $options = null;
 
-	protected $concurrentRequests = 0;
-	protected $queuedRequests = array();
+	protected $rateLimiter = null;
 
 	public function __construct(array $parameters, array $options)
 	{
@@ -23,8 +22,7 @@ class DirectoryListerCore
 		$this->progressStream = $parameters['progressStream'];
 		$this->options = $options;
 
-		$this->concurrentRequests = 0;
-		$this->queuedRequests = array();
+		$this->rateLimiter = new RateLimiter($this->loop, $this->wordlistStream, $options['max_concurrent_requests']);
 
 		if(!preg_match('/\/$/', $this->options['url'])) {
 			$this->options['url'] .= '/';
@@ -33,29 +31,16 @@ class DirectoryListerCore
 
 	public function run()
 	{
-		$this->wordlistStream->on('data', function($word) {
-			$this->emitRequest($word);
-		});
-
-		$this->wordlistStream->on('close', function() {
-			while(!empty($this->queuedRequests) && $this->concurrentRequests <= $this->options['max_concurrent_requests']) {
-				$word = array_pop($this->queuedRequests);
-				$this->emitRequest($word);
-			}
+		$this->rateLimiter->run(function($data) {
+			$this->emitRequest($data, array($this->rateLimiter, 'finishedProcess'), array($this->rateLimiter, 'enqueueItem'));
 		});
 	}
 
-	public function emitRequest($word)
+	public function emitRequest($word, $callbackFinish, $callbackError)
 	{
 		// Word with size 0 -> return
 		if(strlen($word) == 0) {
-			return;
-		}
-
-		// Too many concurrent requests, pause stream and enqueue word
-		if($this->concurrentRequests > $this->options['max_concurrent_requests']) {
-			$this->wordlistStream->pause();
-			$this->queuedRequests[] = $word;
+			call_user_func($callbackFinish);
 			return;
 		}
 
@@ -80,33 +65,12 @@ class DirectoryListerCore
 		});
 
 		// Add error handler (put word again into queue)
-		$request->on('error', function($error) use ($word) {
-			//$this->progressStream->write("ERROR: $word, $error\n");
-			$this->queuedRequests[] = $word;
+		$request->on('error', function($error) use ($callbackError, $word) {
+			call_user_func($callbackError, $word);
 		});
 
 		// Add close handler
-		$request->on('close', function() {
-
-			// Decrement request counter
-			$this->concurrentRequests--;
-
-			// If we are into concurrent request limit, resume streams
-			if($this->concurrentRequests <= $this->options['max_concurrent_requests']) {
-
-				// Get words from queue and emit requests
-				while(!empty($this->queuedRequests) && $this->concurrentRequests <= $this->options['max_concurrent_requests']) {
-					$word = array_pop($this->queuedRequests);
-					$this->emitRequest($word);
-				}
-
-				// Resume input stream
-				$this->wordlistStream->resume();
-			}
-		});
-
-		// Increment request counter
-		$this->concurrentRequests++;
+		$request->on('close', $callbackFinish);
 
 		// Send request
 		$request->end();
