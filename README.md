@@ -6,6 +6,6 @@ Credit to The Dark Raver for the original dirb project, although nothing has bee
 
 # Setup
 
-You must use composer to fetch dependencies.
+You must use composer to fetch dependencies. [https://getcomposer.org/download/](https://getcomposer.org/download/)
 
 `php composer.phar update` or `composer update` in the project root.
