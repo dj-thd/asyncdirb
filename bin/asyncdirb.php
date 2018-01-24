@@ -52,7 +52,11 @@ if($options['user_agent'] !== false && !isset($options['headers']['User-Agent'])
 	$options['headers']['User-Agent'] = $options['user_agent'];
 }
 
+// For fast closing
 $options['headers']['Connection'] = 'close';
+
+// Accept */*
+$options['headers']['Accept'] = '*/*';
 
 // Add not configurable options
 $options['method'] = $method;
