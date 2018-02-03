@@ -167,7 +167,7 @@ EOD
 $command <url_base> [<wordlist_file(s)>] [options]
 
 ========================= NOTES =========================
- <url_base> : Base URL to scan.
+ <url_base> : Base URL to scan. You can add * to indicate place to bruteforce
  <wordlist_file(s)> : List of wordfiles. (wordfile1,wordfile2,wordfile3...)
 
 ======================== OPTIONS ========================

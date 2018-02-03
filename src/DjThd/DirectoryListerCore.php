@@ -24,8 +24,11 @@ class DirectoryListerCore
 
 		$this->rateLimiter = new RateLimiter($this->loop, $this->wordlistStream, $options['max_concurrent_requests']);
 
-		if(!preg_match('/\/$/', $this->options['url'])) {
-			$this->options['url'] .= '/';
+		if(strpos($this->options['url'], '*') === false) {
+			if(!preg_match('/\/$/', $this->options['url'])) {
+				$this->options['url'] .= '/';
+			}
+			$this->options['url'] .= '*';
 		}
 	}
 
@@ -45,7 +48,7 @@ class DirectoryListerCore
 		}
 
 		// Build URL with word
-		$url = $this->options['url'] . $word;
+		$url = str_replace('*', $word, $this->options['url']);
 		if(strpos($url, ' ') !== false) {
 			$url = str_replace(' ', '%20', $url);
 		}
@@ -56,7 +59,7 @@ class DirectoryListerCore
 		}
 
 		// Build request
-		$request = $this->httpClient->request($this->options['method'], $url, $this->options['headers']);
+		$request = $this->httpClient->request($this->options['method'], $url, $this->options['headers'], '1.1');
 
 		// Add response handler
 		$request->on('response', function($response) use ($url) {
