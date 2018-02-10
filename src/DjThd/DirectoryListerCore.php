@@ -68,14 +68,16 @@ class DirectoryListerCore extends EventEmitter
 		$request = $this->httpClient->request($this->options['method'], $url, $this->options['headers'], '1.1');
 
 		// Add response handler
-		$request->on('response', function($response) use ($url) {
+		$request->on('response', function($response) use ($url, $request) {
 			$handler = new ResponseHandler($url, $response);
 			$handler->handle($this->outputStream, $this->progressStream);
+			$request->close();
 		});
 
 		// Add error handler (put word again into queue)
-		$request->on('error', function($error) use ($callbackError, $word) {
+		$request->on('error', function($error) use ($callbackError, $word, $request) {
 			call_user_func($callbackError, $word);
+			$request->close();
 		});
 
 		// Add close handler

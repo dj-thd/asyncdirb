@@ -7,9 +7,10 @@ $loop = React\EventLoop\Factory::create();
 
 // Manual config that is not configurable yet via argv
 $method = 'HEAD';
-$max_concurrent_requests = 10;
+$max_concurrent_requests = 30;
 $dns_server = '8.8.8.8';
 $request_timeout = 10;
+$keepalive = false; // EXPERIMENTAL
 
 // Parse options from argv
 $parser = new DjThd\DirectoryListerArgvParser($argv);
@@ -52,8 +53,13 @@ if($options['user_agent'] !== false && !isset($options['headers']['User-Agent'])
 	$options['headers']['User-Agent'] = $options['user_agent'];
 }
 
-// For fast closing
-$options['headers']['Connection'] = 'close';
+if($keepalive) {
+	// Experimental keep-alive
+	$options['headers']['Connection'] = 'keep-alive';
+} else {
+	// For fast closing
+	$options['headers']['Connection'] = 'close';
+}
 
 // Accept */*
 $options['headers']['Accept'] = '*/*';
@@ -79,8 +85,13 @@ $connector = new React\Socket\Connector($loop, array(
 // Build connector pool
 $connectorPool = new DjThd\ConnectorPool($connector, false, $max_concurrent_requests);
 
-// Http client
-$client = new React\HttpClient\Client($loop, $connectorPool);
+if($keepalive) {
+	// Http client with keepalive (experimental)
+	$client = new DjThd\HttpClient\Client($loop, $connectorPool, $max_concurrent_requests);
+} else {
+	// ReactPHP HttpClient without keepalive
+	$client = new React\HttpClient\Client($loop, $connectorPool);
+}
 
 // Input streams
 $inputFile = new React\Stream\ReadableResourceStream(fopen($options['wordlist'], 'r'), $loop);
@@ -115,8 +126,9 @@ $parameters = array(
 // Run
 $directoryLister = new DjThd\DirectoryListerCore($parameters, $options);
 
-$directoryLister->on('finish', function() use ($connectorPool) {
+$directoryLister->on('finish', function() use ($connectorPool, $loop) {
         $connectorPool->close();
+	$loop->addTimer(1, array($loop, 'stop'));
 });
 
 $directoryLister->run();

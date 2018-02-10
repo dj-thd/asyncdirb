@@ -10,6 +10,7 @@ class ConnectorPool extends EventEmitter implements ConnectorInterface
 {
 	protected $connector = null;
 	protected $uri = false;
+	protected $closed = false;
 	protected $connections = null;
 	protected $pending_connections = 0;
 	protected $max_connections = 10;
@@ -22,7 +23,7 @@ class ConnectorPool extends EventEmitter implements ConnectorInterface
 		$this->max_connections = $max_connections;
 		$this->fillPool();
 		$this->on('close', function() {
-			$this->uri = false;
+			$this->closed = true;
 			foreach($this->connections as $connection) {
 				$connection->close();
 			}
@@ -36,6 +37,9 @@ class ConnectorPool extends EventEmitter implements ConnectorInterface
 
 	protected function fillPool()
 	{
+		if($this->closed) {
+			return;
+		}
 		while($this->pending_connections + count($this->connections) < $this->max_connections) {
 			if($this->uri === false) {
 				return;
@@ -58,6 +62,9 @@ class ConnectorPool extends EventEmitter implements ConnectorInterface
 
 	public function connect($uri)
 	{
+		if($this->closed) {
+			return Promise\resolve(null);
+		}
 		if($uri === $this->uri && count($this->connections) > 0) {
 			$this->connections->rewind();
 			$connection = $this->connections->current();
