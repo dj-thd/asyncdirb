@@ -2,7 +2,9 @@
 
 namespace DjThd;
 
-class RateLimiter
+use Evenement\EventEmitter;
+
+class RateLimiter extends EventEmitter
 {
 	protected $loop;
 	protected $inputStream;
@@ -75,7 +77,11 @@ class RateLimiter
 			$this->currentProcesses++;
 			call_user_func($this->callback, $item);
 		} else {
-			$this->resumeStream();
+			if($this->inputStream->isReadable() === false) {
+				$this->emit('finish');
+			} else {
+				$this->resumeStream();
+			}
 		}
 	}
 

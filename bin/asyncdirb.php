@@ -76,8 +76,11 @@ $connector = new React\Socket\Connector($loop, array(
 	'unix' => false
 ));
 
+// Build connector pool
+$connectorPool = new DjThd\ConnectorPool($connector, false, $max_concurrent_requests);
+
 // Http client
-$client = new React\HttpClient\Client($loop, $connector);
+$client = new React\HttpClient\Client($loop, $connectorPool);
 
 // Input streams
 $inputFile = new React\Stream\ReadableResourceStream(fopen($options['wordlist'], 'r'), $loop);
@@ -111,6 +114,11 @@ $parameters = array(
 
 // Run
 $directoryLister = new DjThd\DirectoryListerCore($parameters, $options);
+
+$directoryLister->on('finish', function() use ($connectorPool) {
+        $connectorPool->close();
+});
+
 $directoryLister->run();
 
 $loop->run();

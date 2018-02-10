@@ -12,6 +12,8 @@ final class StreamLineReader extends ReadableStreamWrapper implements ReadableSt
 	protected $stream;
 	protected $buffered = '';
 	protected $isPaused = false;
+	protected $closed = false;
+	protected $ended = false;
 
 	public function __construct(ReadableStreamInterface $stream)
 	{
@@ -19,24 +21,31 @@ final class StreamLineReader extends ReadableStreamWrapper implements ReadableSt
 		$stream->on('data', function($data) {
 			if(strlen($this->buffered) > 0) {
 				$this->stream->pause();
-				$buffered = $this->buffered;
-				$this->processData($buffered);
+				$data = $this->buffered . $data;
+				$this->buffered = '';
+				$this->processData($data);
 				if(!$this->isPaused) {
 					$this->stream->resume();
 				}
-				$this->buffered = '';
+			} else {
+				$this->processData($data);
 			}
-			$this->processData($data);
 		});
 		$stream->on('close', function() {
-			$this->emit('close');
-			$this->removeAllListeners();
+			$this->closed = true;
+			if(strlen($this->buffered) === 0) {
+				$this->emit('close');
+				$this->removeAllListeners();
+			}
 		});
 		$stream->on('error', function() {
 			$this->emit('error', func_get_args());
 		});
 		$stream->on('end', function() {
-			$this->emit('end');
+			$this->ended = true;
+			if(strlen($this->buffered) === 0) {
+				$this->emit('end');
+			}
 		});
 	}
 
@@ -59,6 +68,13 @@ final class StreamLineReader extends ReadableStreamWrapper implements ReadableSt
 			}
 		}
 		$this->buffered .= $pending_buffer;
+		if($this->ended && strlen($this->buffered) === 0) {
+			$this->emit('end');
+		}
+		if($this->closed && strlen($this->buffered) === 0) {
+			$this->emit('close');
+			$this->removeAllListeners();
+		}
 	}
 
 	public function pause()

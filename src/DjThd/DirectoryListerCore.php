@@ -2,7 +2,9 @@
 
 namespace DjThd;
 
-class DirectoryListerCore
+use Evenement\EventEmitter;
+
+class DirectoryListerCore extends EventEmitter
 {
 	protected $loop = null;
 	protected $wordlistStream = null;
@@ -34,6 +36,10 @@ class DirectoryListerCore
 
 	public function run()
 	{
+		$this->rateLimiter->on('finish', function() {
+			$this->emit('finish');
+		});
+
 		$this->rateLimiter->run(function($data) {
 			$this->emitRequest($data, array($this->rateLimiter, 'finishedProcess'), array($this->rateLimiter, 'enqueueItem'));
 		});
